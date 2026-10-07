@@ -14,9 +14,9 @@ if GEMINI_API_KEY:
 else:
     print("⚠️ 경고: GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.")
 
-# Gemini 비전 모델 설정 (최신 gemini-2.0-flash 적용)
+# Gemini 비전 모델 설정 (최신 gemini-3.8-flash 적용)
 try:
-    vision_model = genai.GenerativeModel("gemini-2.0-flash")
+    vision_model = genai.GenerativeModel("gemini-3.8-flash")
 except Exception as e:
     print(f"⚠️ 모델 초기화 중 오류 발생: {e}")
 
