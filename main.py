@@ -1,6 +1,5 @@
 import os
-from fastapi import FastAPI, File, Header, HTTPException, UploadFile
-from pydantic import BaseModel
+from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
 
 app = FastAPI(
     title="Arche Sovereign Core",
@@ -12,6 +11,15 @@ UPLOAD_DIR = "received_screens"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 SECRET_KEY = "SECURED_BY_DAYUL"
+
+
+# 디버깅용 미들웨어: 서버로 들어오는 모든 요청의 경로를 로그로 출력
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+  print(f"📥 [SERVER RECEIVE] Method: {request.method}, Path: {request.url.path}")
+  response = await call_next(request)
+  print(f"📤 [SERVER RESPONSE] Status: {response.status_code}")
+  return response
 
 
 @app.get("/")
@@ -27,7 +35,6 @@ def read_root():
   }
 
 
-# 슬래시 유무에 상관없이 모두 수신할 수 있도록 복수 경로 지정
 @app.post("/upload-screen")
 @app.post("/upload-screen/")
 async def upload_screen(
