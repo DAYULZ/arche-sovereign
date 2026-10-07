@@ -27,7 +27,9 @@ def read_root():
   }
 
 
+# 슬래시 유무에 상관없이 모두 수신할 수 있도록 복수 경로 지정
 @app.post("/upload-screen")
+@app.post("/upload-screen/")
 async def upload_screen(
     file: UploadFile = File(...), x_control_lock: str = Header(None)
 ):
