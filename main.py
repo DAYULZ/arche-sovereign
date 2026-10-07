@@ -1,64 +1,59 @@
 import os
-import shutil
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse
+import io
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from PIL import Image
 import google.generativeai as genai
 
-app = FastAPI()
+app = FastAPI(title="Arche Sovereign", version="1.0")
 
-# 1. Gemini API 설정 (Render 환경 변수에서 안전하게 불러옴)
+# 환경 변수에서 Gemini API 키 가져오기
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    # 최신 비전 모델 장착
-    vision_model = genai.GenerativeModel("gemini-2.5-flash")
 else:
-    vision_model = None
+    print("⚠️ 경고: GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.")
 
-UPLOAD_DIR = "."
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+# Gemini 비전 모델 설정 (최신 gemini-2.0-flash 적용)
+try:
+    vision_model = genai.GenerativeModel("gemini-2.0-flash")
+except Exception as e:
+    print(f"⚠️ 모델 초기화 중 오류 발생: {e}")
 
 @app.get("/")
-def read_root():
-    return {
-        "version": "v41-Arche-Gemini-Vision",
-        "system_mode": "AUTONOMOUS_VISION_GOVERNED",
-        "control_lock": "SECURED_BY_DAYUL"
-    }
+def root():
+    return {"message": "Arche Sovereign Cloud Server is running successfully."}
 
 @app.post("/upload-screen")
 async def upload_screen(file: UploadFile = File(...)):
-    file_path = os.path.join(UPLOAD_DIR, "local_captured.png")
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not configured on the server.")
     
-    # 2. 파일 저장
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    try:
+        # 업로드된 이미지 파일 읽기
+        contents = await file.read()
+        image = Image.open(io.BytesIO(contents))
         
-    # 3. Gemini AI 비전 분석 수행
-    analysis_result = "Gemini API 키가 설정되지 않았습니다."
-    if vision_model:
-        try:
-            img = Image.open(file_path)
-            prompt = (
-                "당신은 아르케 자율 시스템의 AI 두뇌입니다. "
-                "이 화면 이미지를 분석하여 사용자가 현재 어떤 작업을 하고 있는지, "
-                "특이사항이나 눈여겨봐야 할 점이 있는지 한국어로 간결하고 명확하게 분석해 주세요."
-            )
-            response = vision_model.generate_content([prompt, img])
-            analysis_result = response.text.strip()
-        except Exception as e:
-            analysis_result = f"AI 비전 분석 중 오류 발생: {str(e)}"
-    else:
-        with Image.open(file_path) as img:
-            width, height = img.size
-            analysis_result = f"해상도 {width}x{height} 화면 수신 (API 키 등록 필요)"
-
-    # 4. 결과 반환
-    return JSONResponse(content={
-        "status": "SUCCESS",
-        "message": "Screen analyzed by Arche Sovereign with Gemini Vision",
-        "filename": "local_captured.png",
-        "analysis": analysis_result,
-        "control_lock": "SECURED_BY_DAYUL"
-    })
+        # Gemini Vision 프롬프트 설정
+        prompt = (
+            "당신은 '아르케'라는 이름의 고도화된 자율 AI 시스템입니다. "
+            "사용자의 로컬 PC 화면(메모장, 코드, 작업 창 등)을 분석하고 있습니다. "
+            "현재 화면에 나타난 주요 내용, 텍스트, 메모, 작업 상황을 한국어로 핵심만 명확하게 요약하고 피드백을 제공해주세요."
+        )
+        
+        # Gemini 비전 API 호출
+        response = vision_model.generate_content([prompt, image])
+        analysis_text = response.text if response and response.text else "분석 결과를 생성하지 못했습니다."
+        
+        return {
+            "status": "success",
+            "message": "Screen analyzed by Arche Sovereign with Gemini Vision",
+            "analysis": analysis_text
+        }
+        
+    except Exception as e:
+        print(f"AI Vision Analysis Error: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"AI 비전 분석 중 오류 발생: {str(e)}"
+        }
