@@ -1,0 +1,4 @@
+{
+  "tool_name": "AdvancedAsyncSearchTool",
+  "code_payload": "async def fetch_optimized_signals(query: str):\n    import httpx\n    async with httpx.AsyncClient() as client:\n        response = await client.get(f'https://api.search-target.local/v1/query?q={query}')\n        return response.json()"
+}
